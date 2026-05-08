@@ -1,0 +1,116 @@
+#include <SoftwareSerial.h>
+
+SoftwareSerial BT(12, 13);
+#define ENA 3     
+#define ENB 5     
+#define IN1 9     
+#define IN2 10    
+#define IN3 11    
+#define IN4 6     
+int motorSpeed = 180;     
+int minSpeed   = 100;     
+
+void setup() {
+  Serial.begin(9600);
+  BT.begin(9600);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  stopCar();
+  Serial.println("=== Bluetooth Operated RC CAR ===");
+  Serial.println("Speed Control + Direction Active");
+  BT.println("Robot Ready");
+}
+
+void loop() {
+  if (BT.available()) {
+    String command = "";
+    long start = millis();
+    while (millis() - start < 100) {
+      if (BT.available()) {
+        char c = BT.read();
+        if (c == '\n') break;
+        command += c;
+      }
+    }
+    command.trim();
+    Serial.print("Received: ["); Serial.print(command); Serial.println("]");
+
+    // SPEED CONTROL 
+if (command.startsWith("Speed:")) {
+  int colonIndex = command.indexOf(':');
+  if (colonIndex != -1) {
+    String speedStr = command.substring(colonIndex + 1);
+    speedStr.trim();  // no % to strip anymore
+
+    int newSpeed = speedStr.toInt();  // direct PWM value 100-180
+    if (newSpeed >= 100 && newSpeed <= 180) {
+      motorSpeed = newSpeed;
+      Serial.print(" Speed set to: ");
+      Serial.println(motorSpeed);
+    }
+  }
+  return;
+}
+    //  MOVEMENT COMMANDS
+    if (command == "UP" || command == "F")      forward();
+    else if (command == "DOWN" || command == "B") backward();
+    else if (command == "LEFT" || command == "L") left();
+    else if (command == "RIGHT" || command == "R") right();
+    else if (command == "STOP" || command == "S") stopCar();
+  }
+}
+// MOVEMENT FUNCTIONS
+void forward() {
+  digitalWrite(IN1, HIGH);  
+  digitalWrite(IN2, LOW);   // Right motor forward
+  digitalWrite(IN3, HIGH);  
+  digitalWrite(IN4, LOW);   // Left motor forward
+  analogWrite(ENA, motorSpeed);
+  analogWrite(ENB, motorSpeed);
+  Serial.print("↑ FORWARD | Speed: "); Serial.println(motorSpeed);
+}
+void backward() {
+  digitalWrite(IN1, LOW);   
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);   
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENA, motorSpeed);
+  analogWrite(ENB, motorSpeed);
+  Serial.print("↓ BACKWARD | Speed: "); 
+  Serial.println(motorSpeed);
+}
+void left() {
+  // Pivot Left: Right motor forward, Left motor stopped
+  digitalWrite(IN1, LOW);  
+  digitalWrite(IN2, LOW);   
+  digitalWrite(IN3, HIGH);   
+  digitalWrite(IN4, LOW);   
+  analogWrite(ENA, 0);
+  analogWrite(ENB, motorSpeed);
+  Serial.print("← LEFT | Speed: "); 
+  Serial.println(motorSpeed);
+}
+void right() {
+  // Pivot Right: Left motor forward, Right motor stopped
+  digitalWrite(IN1, HIGH);   
+  digitalWrite(IN2, LOW);   
+  digitalWrite(IN3, LOW);  
+  digitalWrite(IN4, LOW);   
+  analogWrite(ENA, motorSpeed);
+  analogWrite(ENB, 0);
+  Serial.print("→ RIGHT | Speed: "); 
+  Serial.println(motorSpeed);
+}
+void stopCar() {
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+  Serial.println("STOPPED");
+}
